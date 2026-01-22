@@ -29,7 +29,7 @@ use ratatui::{
     backend::{Backend, CrosstermBackend},
     layout::Size,
     style::Stylize,
-    widgets::WidgetRef,
+    widgets::Widget,
     CompletedFrame, Terminal,
 };
 use redu::{
@@ -543,14 +543,14 @@ fn ui<R: Reporter + ?Sized>(
     }
 }
 
-fn render<'a>(
-    terminal: &'a mut Terminal<impl Backend>,
+fn render<'a, B: Backend>(
+    terminal: &'a mut Terminal<B>,
     app: &App,
-) -> io::Result<CompletedFrame<'a>> {
+) -> Result<CompletedFrame<'a>, B::Error> {
     terminal.draw(|frame| {
         let area = frame.area();
         let buf = frame.buffer_mut();
-        app.render_ref(area, buf)
+        app.render(area, buf)
     })
 }
 

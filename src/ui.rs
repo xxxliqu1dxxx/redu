@@ -13,8 +13,7 @@ use ratatui::{
     style::{Style, Stylize},
     text::Span,
     widgets::{
-        Block, BorderType, Clear, Padding, Paragraph, Row, Table, Widget,
-        WidgetRef, Wrap,
+        Block, BorderType, Clear, Padding, Paragraph, Row, Table, Widget, Wrap,
     },
 };
 use redu::cache::EntryDetails;
@@ -329,8 +328,8 @@ fn compute_layout(area: Rect) -> (Rect, Rect, Rect) {
     (layout[0], layout[1], layout[2])
 }
 
-impl WidgetRef for App {
-    fn render_ref(&self, area: Rect, buf: &mut Buffer) {
+impl Widget for &App {
+    fn render(self, area: Rect, buf: &mut Buffer) {
         let (header_area, table_area, footer_area) = compute_layout(area);
         {
             // Header
@@ -357,7 +356,7 @@ impl WidgetRef for App {
                 remaining_width -= 1;
             }
             string.push_str(&"-".repeat(remaining_width));
-            Paragraph::new(string).on_light_blue().render_ref(header_area, buf);
+            Paragraph::new(string).on_light_blue().render(header_area, buf);
         }
 
         {
@@ -412,7 +411,7 @@ impl WidgetRef for App {
                 constraints.push(Constraint::Min(SIZEBAR_LEN));
             }
             constraints.push(Constraint::Percentage(100));
-            Table::new(rows, constraints).render_ref(table_area, buf)
+            Table::new(rows, constraints).render(table_area, buf)
         }
 
         {
@@ -426,15 +425,15 @@ impl WidgetRef for App {
             .collect::<Vec<_>>();
             Paragraph::new(Line::from(spans))
                 .on_light_blue()
-                .render_ref(footer_area, buf);
+                .render(footer_area, buf);
         }
 
         if let Some(details_dialog) = &self.details_drawer {
-            details_dialog.render_ref(table_area, buf);
+            details_dialog.render(table_area, buf);
         }
 
         if let Some(confirm_dialog) = &self.confirm_dialog {
-            confirm_dialog.render_ref(area, buf);
+            confirm_dialog.render(area, buf);
         }
     }
 }
@@ -550,8 +549,8 @@ struct DetailsDrawer {
     details: EntryDetails,
 }
 
-impl WidgetRef for DetailsDrawer {
-    fn render_ref(&self, area: Rect, buf: &mut Buffer) {
+impl Widget for &DetailsDrawer {
+    fn render(self, area: Rect, buf: &mut Buffer) {
         let details = &self.details;
         let text = format!(
             "max size: {} ({})\n\
@@ -601,8 +600,8 @@ struct ConfirmDialog {
     action: Action,
 }
 
-impl WidgetRef for ConfirmDialog {
-    fn render_ref(&self, area: Rect, buf: &mut Buffer) {
+impl Widget for &ConfirmDialog {
+    fn render(self, area: Rect, buf: &mut Buffer) {
         let main_text = Paragraph::new(self.text.clone())
             .centered()
             .wrap(Wrap { trim: false });
