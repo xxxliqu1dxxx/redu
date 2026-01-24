@@ -11,7 +11,7 @@ env:
 
 jobs:
   rustfmt-check:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Install rustfmt
@@ -20,7 +20,7 @@ jobs:
         run: cargo fmt --check
   build-test-linux-x86_64:
     needs: rustfmt-check
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Add x86_64-unknown-linux-musl target
@@ -36,7 +36,7 @@ jobs:
         run: cargo test --target=x86_64-unknown-linux-musl --verbose
   build-linux-arm64:
     needs: rustfmt-check
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Install cross
@@ -45,21 +45,21 @@ jobs:
         run: cross build --target aarch64-unknown-linux-musl --verbose
   build-darwin-x86_64:
     needs: rustfmt-check
-    runs-on: macos-13
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - name: Build
         run: cargo build --verbose
   build-darwin-arm64:
     needs: rustfmt-check
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - name: Build
         run: cargo build --verbose
   build-windows-x86_64:
     needs: rustfmt-check
-    runs-on: windows-2022
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - name: Build
@@ -68,7 +68,7 @@ jobs:
         run: cargo test --verbose
   build-windows-arm64:
     needs: rustfmt-check
-    runs-on: windows-2022
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - name: Add aarch64-pc-windows-msvc target
