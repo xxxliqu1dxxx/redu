@@ -48,6 +48,13 @@ pub enum Error {
 }
 
 impl Cache {
+    pub fn get_snapshot_hashes(&self) -> Result<Vec<String>, rusqlite::Error> {
+        self.conn
+            .prepare("SELECT hash FROM snapshots")?
+            .query_map([], |row| row.get("hash"))?
+            .collect()
+    }
+
     pub fn get_snapshots(&self) -> Result<Vec<Snapshot>, Error> {
         self.conn
             .prepare(
@@ -124,14 +131,6 @@ impl Cache {
         Ok(path_id)
     }
 
-    fn entries_tables(
-        &self,
-    ) -> Result<impl Iterator<Item = String>, rusqlite::Error> {
-        Ok(get_tables(&self.conn)?
-            .into_iter()
-            .filter(|name| name.starts_with("entries_")))
-    }
-
     /// This returns the children files/directories of the given path.
     /// Each entry's size is the largest size of that file/directory across
     /// all snapshots.
@@ -142,15 +141,16 @@ impl Cache {
         let raw_path_id = o_path_id_to_raw_u64(path_id);
         let mut entries: Vec<Entry> = Vec::new();
         let mut index: HashMap<PathId, usize> = HashMap::new();
-        for table in self.entries_tables()? {
+        for snapshot_hash in self.get_snapshot_hashes()? {
             let stmt_str = format!(
                 "SELECT \
                      path_id, \
                      component, \
                      size, \
                      is_dir \
-                 FROM \"{table}\" JOIN paths ON path_id = paths.id \
+                 FROM \"{}\" JOIN paths ON path_id = paths.id \
                  WHERE parent_id = {raw_path_id}\n",
+                entries_table_name(snapshot_hash),
             );
             let mut stmt = self.conn.prepare(&stmt_str)?;
             let rows = stmt.query_map([], |row| {
@@ -186,20 +186,20 @@ impl Cache {
         path_id: PathId,
     ) -> Result<Option<EntryDetails>, Error> {
         let raw_path_id = path_id.0;
-        let run_query = |table: &str| -> Result<
+        let run_query = |snapshot_hash: &str| -> Result<
             Option<(String, usize, DateTime<Utc>)>,
             Error,
         > {
-            let snapshot_hash = table.strip_prefix("entries_").unwrap();
             let stmt_str = format!(
                 "SELECT \
                      hash, \
                      size, \
                      time \
-                 FROM \"{table}\" \
+                 FROM \"{}\" \
                      JOIN paths ON path_id = paths.id \
                      JOIN snapshots ON hash = '{snapshot_hash}' \
-                 WHERE path_id = {raw_path_id}\n"
+                 WHERE path_id = {raw_path_id}\n",
+                entries_table_name(snapshot_hash),
             );
             let mut stmt = self.conn.prepare(&stmt_str)?;
             stmt.query_row([], |row| {
@@ -212,12 +212,14 @@ impl Cache {
             .transpose()
         };
 
-        let mut entries_tables = self.entries_tables()?;
+        let snapshot_hashes = self.get_snapshot_hashes()?;
+        let mut snapshot_hashes_iter = snapshot_hashes.iter();
         let mut details = loop {
-            match entries_tables.next() {
+            match snapshot_hashes_iter.next() {
                 None => return Ok(None),
-                Some(table) => {
-                    if let Some((hash, size, time)) = run_query(&table)? {
+                Some(snapshot_hash) => {
+                    if let Some((hash, size, time)) = run_query(snapshot_hash)?
+                    {
                         break EntryDetails {
                             max_size: size,
                             max_size_snapshot_hash: hash.clone(),
@@ -231,8 +233,8 @@ impl Cache {
             }
         };
         let mut max_size_time = details.first_seen; // Time of the max_size snapshot
-        for table in entries_tables {
-            if let Some((hash, size, time)) = run_query(&table)? {
+        for snapshot_hash in snapshot_hashes_iter {
+            if let Some((hash, size, time)) = run_query(snapshot_hash)? {
                 if size > details.max_size
                     || (size == details.max_size && time > max_size_time)
                 {
@@ -308,7 +310,7 @@ impl Cache {
             }
         }
         {
-            let entries_table = format!("entries_{}", &snapshot.id);
+            let entries_table = entries_table_name(&snapshot.id);
             tx.execute(
                 &format!(
                     "CREATE TABLE \"{entries_table}\" (
@@ -365,7 +367,10 @@ impl Cache {
         tx.execute("DELETE FROM snapshot_paths WHERE hash = ?", [hash])?;
         tx.execute("DELETE FROM snapshot_excludes WHERE hash = ?", [hash])?;
         tx.execute("DELETE FROM snapshot_tags WHERE hash = ?", [hash])?;
-        tx.execute(&format!("DROP TABLE IF EXISTS \"entries_{}\"", hash), [])?;
+        tx.execute(
+            &format!("DROP TABLE IF EXISTS \"{}\"", entries_table_name(hash)),
+            [],
+        )?;
         tx.commit()
     }
 
@@ -418,6 +423,10 @@ fn raw_u64_to_o_path_id(id: u64) -> Option<PathId> {
 
 fn o_path_id_to_raw_u64(path_id: Option<PathId>) -> u64 {
     path_id.map(|path_id| path_id.0).unwrap_or(0)
+}
+
+fn entries_table_name<S: AsRef<str>>(snapshot_hash: S) -> String {
+    format!("entries_{}", snapshot_hash.as_ref())
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
