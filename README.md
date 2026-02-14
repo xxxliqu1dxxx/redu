@@ -10,6 +10,7 @@ redu aggregates data from **all** snapshots into one view so you can easily find
 the culprits!
 
 # Installing
+[![Packaging status](https://repology.org/badge/vertical-allrepos/redu.svg)](https://repology.org/project/redu/versions)
 ## Cargo
 ```
 cargo install redu --locked
