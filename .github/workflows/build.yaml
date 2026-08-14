@@ -50,8 +50,10 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Add x86_64-apple-darwin target
+        run: rustup target add x86_64-apple-darwin
       - name: Build
-        run: cargo build --verbose
+        run: cargo build --target x86_64-apple-darwin --verbose
   build-darwin-arm64:
     needs: rustfmt-check
     runs-on: macos-latest

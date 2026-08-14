@@ -68,11 +68,13 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Add x86_64-apple-darwin target
+        run: rustup target add x86_64-apple-darwin
       - name: Build
-        run: cargo build --release --verbose
+        run: cargo build --target x86_64-apple-darwin --release --verbose
       - name: Compress
         run: >
-          cat "target/release/${{needs.set-env.outputs.name}}"
+          cat "target/x86_64-apple-darwin/release/${{needs.set-env.outputs.name}}"
           | bzip2 -9 -c > ${{needs.set-env.outputs.name}}-${{needs.set-env.outputs.version}}-darwin-x86_64.bz2
       - name: Upload
         uses: diamondburned/action-upload-release@v0.0.1
