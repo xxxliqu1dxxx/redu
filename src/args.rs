@@ -130,7 +130,7 @@ struct Cli {
     #[arg(long)]
     non_interactive: bool,
 
-    /// Filter the listed snapshots by tag. Repeatable — e.g. --tag plan:backups --tag plan:images.
+    /// Filter the listed snapshots by tag. Repeatable — e.g. --tag backups --tag images.
     #[arg(long = "tag", value_name = "TAG", action = clap::ArgAction::Append)]
     tags: Vec<String>,
 }
